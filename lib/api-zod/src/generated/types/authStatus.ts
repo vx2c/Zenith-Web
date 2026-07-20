@@ -5,7 +5,9 @@
  * Roblox Studio AI - Chatbot API for Roblox game modification
  * OpenAPI spec version: 0.1.0
  */
+import type { RobloxUser } from './robloxUser';
 
-export interface HealthStatus {
-  status: string;
+export interface AuthStatus {
+  authenticated: boolean;
+  user?: RobloxUser;
 }
