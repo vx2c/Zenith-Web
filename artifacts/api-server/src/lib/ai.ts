@@ -13,7 +13,7 @@ interface AIResponse {
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const SYSTEM_PROMPT = `You are an expert Roblox Studio AI assistant specializing in Luau scripting and game development. You help developers write, debug, and improve their Roblox games.
+const BASE_SYSTEM_PROMPT = `You are Zenith, an expert Roblox Studio AI assistant specializing in Luau scripting and game development. You help developers write, debug, and improve their Roblox games.
 
 When responding:
 - Give clear, concise explanations followed by working Luau code when relevant.
@@ -47,11 +47,15 @@ function extractCodeBlock(text: string): { content: string; codeSnippet: string 
   };
 }
 
-export async function generateAIResponse(messages: AIMessage[]): Promise<AIResponse> {
+export async function generateAIResponse(messages: AIMessage[], personality?: string): Promise<AIResponse> {
+  const systemPrompt = personality
+    ? `${personality}\n\nAdditional context: You are also an expert in Luau scripting and Roblox Studio. When you include code, always use a fenced \`\`\`lua code block. Only include ONE code block per response.`
+    : BASE_SYSTEM_PROMPT;
+
   const completion = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       ...messages.map((m) => ({ role: m.role, content: m.content })),
     ],
     max_tokens: 1500,

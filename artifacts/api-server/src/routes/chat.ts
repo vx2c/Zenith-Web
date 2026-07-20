@@ -302,8 +302,9 @@ chatRouter.post("/chat/sessions/:sessionId/messages", requireAuth, async (req: a
     content: m.content,
   }));
 
-  // Generate AI response
-  const aiResponse = await generateAIResponse(aiMessages);
+  // Generate AI response (personality is optional, sent from frontend settings)
+  const personality = typeof req.body.personality === "string" ? req.body.personality : undefined;
+  const aiResponse = await generateAIResponse(aiMessages, personality);
 
   // Save AI response
   const [assistantMessage] = await db
