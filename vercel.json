@@ -1,0 +1,5 @@
+{
+  "buildCommand": "pnpm --filter @workspace/roblox-studio-ai run build",
+  "outputDirectory": "artifacts/roblox-studio-ai/dist/public",
+  "installCommand": "pnpm install"
+}
