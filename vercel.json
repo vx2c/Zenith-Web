@@ -1,4 +1,11 @@
 {
-  "buildCommand": "pnpm --filter @workspace/roblox-studio-ai run build",
-  "installCommand": "pnpm install"
+  "buildCommand": "pnpm --filter @workspace/roblox-studio-ai run build && mkdir -p public && cp -r artifacts/roblox-studio-ai/dist/public/* public/",
+  "installCommand": "pnpm install",
+  "outputDirectory": "public",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
