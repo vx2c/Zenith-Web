@@ -1,0 +1,159 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: 220 20% 97%;
+  --foreground: 220 15% 12%;
+  --border: 220 13% 88%;
+  --input: 220 13% 91%;
+  --ring: 198 100% 50%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 15% 12%;
+  --primary: 220 15% 10%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 94%;
+  --secondary-foreground: 220 15% 12%;
+  --muted: 220 14% 94%;
+  --muted-foreground: 220 9% 50%;
+  --accent: 220 14% 94%;
+  --accent-foreground: 220 15% 12%;
+  --destructive: 0 84% 60%;
+  --radius: 0.625rem;
+}
+
+@layer base {
+  * { @apply border-border box-border; }
+  body {
+    @apply bg-background text-foreground font-sans antialiased overflow-hidden;
+    background-color: #f5f6fa;
+  }
+  html, body, #root { height: 100%; width: 100%; }
+}
+
+/* ── Animated orb background ── */
+@keyframes orb-float-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(60px, -40px) scale(1.05); }
+  66%       { transform: translate(-30px, 50px) scale(0.97); }
+}
+@keyframes orb-float-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%       { transform: translate(-70px, 60px) scale(1.08); }
+  70%       { transform: translate(40px, -50px) scale(0.95); }
+}
+@keyframes orb-float-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  30%       { transform: translate(50px, 70px) scale(1.06); }
+  60%       { transform: translate(-60px, -30px) scale(0.98); }
+}
+@keyframes orb-float-4 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(-40px, -60px) scale(1.04); }
+}
+@keyframes orb-float-5 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  45%       { transform: translate(80px, 30px) scale(1.07); }
+  80%       { transform: translate(-20px, -70px) scale(0.96); }
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  will-change: transform;
+}
+.orb-1 { animation: orb-float-1 18s ease-in-out infinite; }
+.orb-2 { animation: orb-float-2 22s ease-in-out infinite; }
+.orb-3 { animation: orb-float-3 26s ease-in-out infinite; }
+.orb-4 { animation: orb-float-4 20s ease-in-out infinite; }
+.orb-5 { animation: orb-float-5 24s ease-in-out infinite; }
+
+/* ── Thinking step dots ── */
+@keyframes thinking-dot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1); opacity: 1; }
+}
+.thinking-dot:nth-child(1) { animation: thinking-dot 1.2s ease-in-out infinite 0s; }
+.thinking-dot:nth-child(2) { animation: thinking-dot 1.2s ease-in-out infinite 0.2s; }
+.thinking-dot:nth-child(3) { animation: thinking-dot 1.2s ease-in-out infinite 0.4s; }
+
+/* ── Thinking step fade-in ── */
+@keyframes step-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.step-in { animation: step-in 0.3s ease forwards; }
+
+/* ── Glass panel ── */
+.glass {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+}
+.glass-dark {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(220, 225, 235, 0.7);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+
+/* ── Status dot ── */
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50%       { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+}
+.status-on { animation: pulse-green 2s ease-in-out infinite; }
+
+/* ── Code block ── */
+.code-block {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  background: #1a1b26;
+  color: #c0caf5;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+/* ── Message fade-in ── */
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.msg-in { animation: msg-in 0.25s ease forwards; }
