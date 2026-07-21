@@ -4,6 +4,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import ConnectModal from '@/components/ConnectModal';
 import SettingsModal from '@/components/SettingsModal';
+import { type Lang } from '@/lib/i18n';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,162 +37,131 @@ interface ThinkingStep {
   label: string;
 }
 
-// ── Thinking steps sequence ───────────────────────────────────────────────────
+// ── Thinking sequences ────────────────────────────────────────────────────────
 
 const THINKING_SEQUENCES: Record<string, string[]> = {
   default: ['Thinking', 'Processing Request', 'Writing Code'],
   explorer: ['Thinking', 'Checking Explorer', 'Executing Command', 'Write Code'],
   code: ['Thinking', 'Analyzing Code', 'Reviewing Scripts', 'Write Code'],
-  data: ['Thinking', 'Processing Request', 'Write Code'],
 };
 
 function getSequence(text: string): string[] {
   const t = text.toLowerCase();
   if (t.includes('explorer') || t.includes('plugin') || t.includes('revisa')) return THINKING_SEQUENCES.explorer;
-  if (t.includes('code') || t.includes('script') || t.includes('código') || t.includes('arregla')) return THINKING_SEQUENCES.code;
-  if (t.includes('data') || t.includes('datos') || t.includes('datastore')) return THINKING_SEQUENCES.data;
+  if (t.includes('script') || t.includes('código') || t.includes('arregla') || t.includes('code')) return THINKING_SEQUENCES.code;
   return THINKING_SEQUENCES.default;
 }
 
-// ── API helpers ───────────────────────────────────────────────────────────────
-
-const API = '/api';
+// ── API ───────────────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(`/api${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     ...init,
   });
-  if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
+  if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
   return res.json() as Promise<T>;
 }
 
-// ── Default personality ───────────────────────────────────────────────────────
+// ── Defaults ──────────────────────────────────────────────────────────────────
 
 const DEFAULT_PERSONALITY = 'Eres Zenith, un asistente experto en Roblox Studio y Luau. Eres preciso, útil y amigable.';
 
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  // Auth
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showConnectModal, setShowConnectModal] = useState(false);
 
-  // Plugin connection (simulated — plugin connects via future WS)
   const [pluginConnected] = useState(false);
 
-  // Sessions
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Settings
   const [showSettings, setShowSettings] = useState(false);
-  const [personality, setPersonality] = useState<string>(() => {
-    return localStorage.getItem('zenith_personality') ?? DEFAULT_PERSONALITY;
-  });
+  const [personality, setPersonality] = useState<string>(() =>
+    localStorage.getItem('zenith_personality') ?? DEFAULT_PERSONALITY
+  );
+  const [lang, setLang] = useState<Lang>(() =>
+    (localStorage.getItem('zenith_lang') as Lang) ?? 'es'
+  );
 
   const stepIdRef = useRef(0);
   const thinkingTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // ── Fetch auth ──────────────────────────────────────────────────────────────
+  // ── Auth ────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     apiFetch<{ authenticated: boolean; user?: User }>('/auth/me')
       .then(({ authenticated, user: u }) => {
-        if (authenticated && u) {
-          setUser(u);
-        } else {
-          setShowConnectModal(true);
-        }
+        if (authenticated && u) setUser(u);
+        else setShowConnectModal(true);
       })
       .catch(() => setShowConnectModal(true))
       .finally(() => setAuthLoading(false));
   }, []);
 
-  // ── Fetch sessions ──────────────────────────────────────────────────────────
+  // ── Sessions ────────────────────────────────────────────────────────────────
 
   const fetchSessions = useCallback(async () => {
     if (!user) return;
     try {
       const data = await apiFetch<Session[]>('/chat/sessions');
       setSessions(data);
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }, [user]);
 
-  useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+  useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
-  // ── Fetch messages for active session ────────────────────────────────────────
+  // ── Messages ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!activeSessionId) {
-      setMessages([]);
-      return;
-    }
+    if (!activeSessionId) { setMessages([]); return; }
     apiFetch<Message[]>(`/chat/sessions/${activeSessionId}/messages`)
       .then(setMessages)
       .catch(() => setMessages([]));
   }, [activeSessionId]);
 
-  // ── New chat ─────────────────────────────────────────────────────────────────
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleNewChat = useCallback(async () => {
-    if (!user) {
-      setShowConnectModal(true);
-      return;
-    }
+    if (!user) { setShowConnectModal(true); return; }
     try {
       const session = await apiFetch<Session>('/chat/sessions', {
         method: 'POST',
-        body: JSON.stringify({ title: 'Nuevo chat' }),
+        body: JSON.stringify({ title: lang === 'en' ? 'New chat' : 'Nuevo chat' }),
       });
       setSessions((prev) => [session, ...prev]);
       setActiveSessionId(session.id);
       setMessages([]);
-    } catch (e) {
-      console.error(e);
-    }
-  }, [user]);
-
-  // ── Select session ────────────────────────────────────────────────────────────
+    } catch (e) { console.error(e); }
+  }, [user, lang]);
 
   const handleSelectSession = useCallback((id: string) => {
     setActiveSessionId(id);
     setThinkingSteps([]);
   }, []);
 
-  // ── Delete session ────────────────────────────────────────────────────────────
-
   const handleDeleteSession = useCallback(async (id: string) => {
     try {
       await apiFetch(`/chat/sessions/${id}`, { method: 'DELETE' });
       setSessions((prev) => prev.filter((s) => s.id !== id));
-      if (activeSessionId === id) {
-        setActiveSessionId(null);
-        setMessages([]);
-      }
-    } catch {
-      // ignore
-    }
+      if (activeSessionId === id) { setActiveSessionId(null); setMessages([]); }
+    } catch { /* ignore */ }
   }, [activeSessionId]);
 
-  // ── Send message ──────────────────────────────────────────────────────────────
+  /** Returns true on success so ChatArea can clear the input */
+  const handleSend = useCallback(async (content: string): Promise<boolean> => {
+    if (isLoading) return false;
 
-  const handleSend = useCallback(async (content: string) => {
-    if (isLoading) return;
-
-    // Ensure we have an active session
     let sessionId = activeSessionId;
     if (!sessionId) {
-      if (!user) { setShowConnectModal(true); return; }
+      if (!user) { setShowConnectModal(true); return false; }
       try {
         const title = content.length > 40 ? content.slice(0, 40) + '…' : content;
         const session = await apiFetch<Session>('/chat/sessions', {
@@ -201,28 +171,20 @@ export default function App() {
         setSessions((prev) => [session, ...prev]);
         setActiveSessionId(session.id);
         sessionId = session.id;
-      } catch { return; }
+      } catch { return false; }
     }
 
-    // Optimistically add user message
-    const tempUserMsg: Message = {
-      id: `temp-user-${Date.now()}`,
-      role: 'user',
-      content,
-      codeSnippet: null,
-      codeLanguage: null,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, tempUserMsg]);
+    // Optimistic user message
+    const tempId = `temp-${Date.now()}`;
+    const tempMsg: Message = { id: tempId, role: 'user', content, codeSnippet: null, codeLanguage: null, createdAt: new Date().toISOString() };
+    setMessages((prev) => [...prev, tempMsg]);
     setIsLoading(true);
 
-    // Start thinking animation
-    const sequence = getSequence(content);
+    // Thinking animation
     thinkingTimersRef.current.forEach(clearTimeout);
     thinkingTimersRef.current = [];
     setThinkingSteps([]);
-
-    sequence.forEach((label, i) => {
+    getSequence(content).forEach((label, i) => {
       const timer = setTimeout(() => {
         const id = ++stepIdRef.current;
         setThinkingSteps((prev) => [...prev, { id, label }]);
@@ -236,48 +198,51 @@ export default function App() {
         body: JSON.stringify({ content, personality }),
       });
 
-      // Replace temp message + add AI response
       setMessages((prev) => {
-        const withoutTemp = prev.filter((m) => m.id !== tempUserMsg.id);
-        // Add real user message (comes back implicitly from history on next load)
-        return [...withoutTemp, {
-          ...tempUserMsg,
-          id: `user-${Date.now()}`,
-        }, aiMsg];
+        const without = prev.filter((m) => m.id !== tempId);
+        return [...without, { ...tempMsg, id: `user-${Date.now()}` }, aiMsg];
       });
 
-      // Update session title if it was auto-generated
       const shortened = content.length > 40 ? content.slice(0, 40) + '…' : content;
+      const defaultTitle = lang === 'en' ? 'New chat' : 'Nuevo chat';
       setSessions((prev) =>
         prev.map((s) =>
-          s.id === sessionId && s.title === 'Nuevo chat'
+          s.id === sessionId && s.title === defaultTitle
             ? { ...s, title: shortened, messageCount: s.messageCount + 2 }
-            : { ...s, messageCount: s.id === sessionId ? s.messageCount + 2 : s.messageCount }
+            : s.id === sessionId
+            ? { ...s, messageCount: s.messageCount + 2 }
+            : s
         )
       );
+      return true;
     } catch (err) {
       console.error(err);
-      setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      return false;
     } finally {
       thinkingTimersRef.current.forEach(clearTimeout);
       setThinkingSteps([]);
       setIsLoading(false);
     }
-  }, [activeSessionId, isLoading, personality, user]);
+  }, [activeSessionId, isLoading, personality, user, lang]);
 
-  // ── Settings ──────────────────────────────────────────────────────────────────
+  const handleAgain = useCallback((userContent: string) => {
+    handleSend(userContent);
+  }, [handleSend]);
 
-  const handleSavePersonality = useCallback((p: string) => {
+  const handleSaveSettings = useCallback((p: string, l: Lang) => {
     setPersonality(p);
+    setLang(l);
     localStorage.setItem('zenith_personality', p);
+    localStorage.setItem('zenith_lang', l);
   }, []);
 
-  // ── Active session title ──────────────────────────────────────────────────────
+  // ── Derived ──────────────────────────────────────────────────────────────────
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const sessionTitle = activeSession?.title ?? 'Zenith';
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Loading screen ────────────────────────────────────────────────────────────
 
   if (authLoading) {
     return (
@@ -285,17 +250,14 @@ export default function App() {
         <Background />
         <div className="flex flex-col items-center gap-4">
           <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl"
-            style={{ background: '#0f0f1a' }}
+            className="w-14 h-14 rounded-2xl overflow-hidden shadow-xl"
+            style={{ border: '1.5px solid rgba(0,0,0,0.1)' }}
           >
-            <img src="/zenith-logo.png" alt="Z" className="w-9 h-9 object-contain" style={{ filter: 'invert(1)' }} />
+            <img src="/zenith-logo.png" alt="Zenith" className="w-full h-full object-cover" />
           </div>
           <div className="flex gap-1.5">
             {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="thinking-dot w-2 h-2 rounded-full bg-gray-400"
-              />
+              <div key={i} className="thinking-dot w-2 h-2 rounded-full bg-gray-400" />
             ))}
           </div>
         </div>
@@ -307,8 +269,8 @@ export default function App() {
     <div className="fixed inset-0 flex overflow-hidden">
       <Background />
 
-      {/* Sidebar */}
       <Sidebar
+        lang={lang}
         user={user}
         pluginConnected={pluginConnected}
         robloxConnected={!!user}
@@ -321,19 +283,20 @@ export default function App() {
         onConnectRoblox={() => setShowConnectModal(true)}
       />
 
-      {/* Chat */}
       <ChatArea
+        lang={lang}
         sessionTitle={sessionTitle}
         messages={messages}
         isLoading={isLoading}
         thinkingSteps={thinkingSteps}
         onSend={handleSend}
+        onAgain={handleAgain}
         robloxConnected={!!user}
       />
 
-      {/* Modals */}
       {showConnectModal && (
         <ConnectModal
+          lang={lang}
           onConnect={() => { window.location.href = '/api/auth/roblox'; }}
           onLater={() => setShowConnectModal(false)}
         />
@@ -341,8 +304,10 @@ export default function App() {
 
       {showSettings && (
         <SettingsModal
+          lang={lang}
           personality={personality}
-          onSave={handleSavePersonality}
+          language={lang}
+          onSave={handleSaveSettings}
           onClose={() => setShowSettings(false)}
         />
       )}
